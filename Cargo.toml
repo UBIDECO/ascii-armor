@@ -13,5 +13,6 @@ edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
+amplify = "4.6.0"
 base85 = "2.0.0"
 sha2 = "0.10.7"
