@@ -162,9 +162,10 @@ pub trait AsciiArmor: Sized {
 
     const ASCII_ARMOR_PLATE_TITLE: &'static str;
 
+    fn to_ascii_armored_string(&self) -> String { format!("{}", self.display_ascii_armored()) }
     fn display_ascii_armored(&self) -> DisplayAsciiArmored<Self> { DisplayAsciiArmored(self) }
     fn ascii_armored_id(&self) -> Option<Self::Id> { None }
-    fn ascii_armored_headers(&self) -> Vec<ArmorHeader>;
+    fn ascii_armored_headers(&self) -> Vec<ArmorHeader> { none!() }
     fn ascii_armored_digest(&self) -> Bytes32 { DisplayAsciiArmored(self).data_digest().1 }
     fn to_ascii_armored_data(&self) -> Vec<u8>;
 
@@ -218,37 +219,35 @@ pub trait AsciiArmor: Sized {
     ) -> Result<Self, Self::Err>;
 }
 
+impl AsciiArmor for Vec<u8> {
+    type Id = Bytes32;
+    type Err = ArmorParseError;
+    const ASCII_ARMOR_PLATE_TITLE: &'static str = "";
+
+    fn to_ascii_armored_data(&self) -> Vec<u8> { self.clone() }
+
+    fn with_ascii_armored_data(
+        id: Option<String>,
+        headers: Vec<ArmorHeader>,
+        data: Vec<u8>,
+    ) -> Result<Self, Self::Err> {
+        assert_eq!(id, None);
+        assert!(headers.is_empty());
+        Ok(data)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
-
-    impl AsciiArmor for Vec<u8> {
-        type Id = Bytes32;
-        type Err = ArmorParseError;
-        const ASCII_ARMOR_PLATE_TITLE: &'static str = "";
-
-        fn ascii_armored_headers(&self) -> Vec<ArmorHeader> { none!() }
-
-        fn to_ascii_armored_data(&self) -> Vec<u8> { self.clone() }
-
-        fn with_ascii_armored_data(
-            id: Option<String>,
-            headers: Vec<ArmorHeader>,
-            data: Vec<u8>,
-        ) -> Result<Self, Self::Err> {
-            assert_eq!(id, None);
-            assert!(headers.is_empty());
-            Ok(data)
-        }
-    }
 
     #[test]
     fn roundtrip() {
         let noise = Sha256::digest("some test data");
         let data = noise.as_slice().repeat(100).iter().cloned().collect::<Vec<u8>>();
-        let armor = format!("{}", data.display_ascii_armored());
+        let armor = data.to_ascii_armored_string();
         let data2 = Vec::<u8>::from_ascii_armored_str(&armor).unwrap();
-        let armor2 = format!("{}", data2.display_ascii_armored());
+        let armor2 = data2.to_ascii_armored_string();
         assert_eq!(data, data2);
         assert_eq!(armor, armor2);
     }

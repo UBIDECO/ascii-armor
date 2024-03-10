@@ -12,6 +12,13 @@ rust-version = "1.66.0"
 edition = "2021"
 license = "Apache-2.0"
 
+[[bin]]
+name = "armor"
+path = "src/main.rs"
+
+[lib]
+name = "armor"
+
 [dependencies]
 amplify = "4.6.0"
 base85 = "2.0.0"
