@@ -27,7 +27,7 @@ use core::str::FromStr;
 use std::fmt::Debug;
 
 use amplify::num::u24;
-use amplify::Bytes32;
+use amplify::{hex, Bytes32};
 use sha2::{Digest, Sha256};
 
 pub const ASCII_ARMOR_MAX_LEN: usize = u24::MAX.to_usize();
@@ -45,7 +45,9 @@ impl<'a, A: AsciiArmor> DisplayAsciiArmored<'a, A> {
 impl<'a, A: AsciiArmor> Display for DisplayAsciiArmored<'a, A> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         writeln!(f, "-----BEGIN {}-----", A::ASCII_ARMOR_PLATE_TITLE)?;
-        writeln!(f, "Id: {}", self.0.ascii_armored_id())?;
+        if let Some(id) = self.0.ascii_armored_id() {
+            writeln!(f, "Id: {}", id)?;
+        }
 
         let (data, digest) = self.data_digest();
         writeln!(f, "Checksum-SHA256: {digest}")?;
@@ -110,6 +112,23 @@ pub enum ArmorParseError {
     /// header providing id for the armored data must not contain additional
     /// parameters.
     NonEmptyIdParams,
+
+    /// header providing checksum for the armored data must not contain additional
+    /// parameters.
+    NonEmptyChecksumParams,
+
+    /// ASCII armor contains unparsable checksum. Details: {0}
+    #[from]
+    UnparsableChecksum(hex::Error),
+
+    /// ASCII armor contains which does not match the id generated from the parsed data.
+    MismatchedId,
+
+    /// ASCII armor checksum doesn't match the actual data.
+    MismatchedChecksum,
+
+    /// unrecognized header '{0}' in ASCII armor.
+    UnrecognizedHeader(String),
 }
 
 impl FromStr for ArmorHeader {
@@ -121,13 +140,13 @@ impl FromStr for ArmorHeader {
         let rest = rest.trim();
         let mut split = rest.split(';');
         let value =
-            split.next().ok_or_else(|| ArmorParseError::InvalidHeaderFormat(s.to_owned()))?;
+            split.next().ok_or_else(|| ArmorParseError::InvalidHeaderFormat(s.to_owned()))?.trim();
         let mut params = vec![];
         for param in split {
             let (name, val) = s.split_once('=').ok_or_else(|| {
                 ArmorParseError::InvalidHeaderParam(title.to_owned(), param.to_owned())
             })?;
-            params.push((name.to_owned(), val.to_owned()));
+            params.push((name.trim().to_owned(), val.trim().to_owned()));
         }
         Ok(ArmorHeader {
             title: title.to_owned(),
@@ -144,7 +163,7 @@ pub trait AsciiArmor: Sized {
     const ASCII_ARMOR_PLATE_TITLE: &'static str;
 
     fn display_ascii_armored(&self) -> DisplayAsciiArmored<Self> { DisplayAsciiArmored(self) }
-    fn ascii_armored_id(&self) -> Self::Id;
+    fn ascii_armored_id(&self) -> Option<Self::Id> { None }
     fn ascii_armored_headers(&self) -> Vec<ArmorHeader>;
     fn ascii_armored_digest(&self) -> Bytes32 { DisplayAsciiArmored(self).data_digest().1 }
     fn to_ascii_armored_data(&self) -> Vec<u8>;
@@ -157,6 +176,7 @@ pub trait AsciiArmor: Sized {
             return Err(ArmorParseError::WrongStructure.into());
         }
         let mut header_id = None;
+        let mut checksum = None;
         let mut headers = vec![];
         for line in lines.by_ref() {
             if line.is_empty() {
@@ -168,13 +188,25 @@ pub trait AsciiArmor: Sized {
                     return Err(ArmorParseError::NonEmptyIdParams.into());
                 }
                 header_id = Some(header.title);
+            } else if header.title == "Checksum-SHA256" {
+                if !header.params.is_empty() {
+                    return Err(ArmorParseError::NonEmptyChecksumParams.into());
+                }
+                checksum = Some(header.value);
             } else {
                 headers.push(header);
             }
-            // TODO: parse and validate digest
         }
         let armor = lines.collect::<String>();
         let data = base85::decode(&armor).map_err(ArmorParseError::from)?;
+        if let Some(checksum) = checksum {
+            let checksum = Bytes32::from_str(&checksum)
+                .map_err(|err| ArmorParseError::UnparsableChecksum(err))?;
+            let expected = Bytes32::from_byte_array(Sha256::digest(&data));
+            if checksum != expected {
+                return Err(ArmorParseError::MismatchedChecksum.into());
+            }
+        }
         let me = Self::with_ascii_armored_data(header_id, headers, data)?;
         Ok(me)
     }
@@ -184,4 +216,40 @@ pub trait AsciiArmor: Sized {
         headers: Vec<ArmorHeader>,
         data: Vec<u8>,
     ) -> Result<Self, Self::Err>;
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    impl AsciiArmor for Vec<u8> {
+        type Id = Bytes32;
+        type Err = ArmorParseError;
+        const ASCII_ARMOR_PLATE_TITLE: &'static str = "";
+
+        fn ascii_armored_headers(&self) -> Vec<ArmorHeader> { none!() }
+
+        fn to_ascii_armored_data(&self) -> Vec<u8> { self.clone() }
+
+        fn with_ascii_armored_data(
+            id: Option<String>,
+            headers: Vec<ArmorHeader>,
+            data: Vec<u8>,
+        ) -> Result<Self, Self::Err> {
+            assert_eq!(id, None);
+            assert!(headers.is_empty());
+            Ok(data)
+        }
+    }
+
+    #[test]
+    fn roundtrip() {
+        let noise = Sha256::digest("some test data");
+        let data = noise.as_slice().repeat(100).iter().cloned().collect::<Vec<u8>>();
+        let armor = format!("{}", data.display_ascii_armored());
+        let data2 = Vec::<u8>::from_ascii_armored_str(&armor).unwrap();
+        let armor2 = format!("{}", data2.display_ascii_armored());
+        assert_eq!(data, data2);
+        assert_eq!(armor, armor2);
+    }
 }
