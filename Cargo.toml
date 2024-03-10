@@ -1,0 +1,17 @@
+[package]
+name = "ascii-armor"
+version = "0.1.0"
+description = "ASCII Armor: binary to text encoding library and command-line utility"
+keywords = ["ascii", "encoding"]
+categories = ["encoding", "value-formatting", "command-line-utilities"]
+readme = "README.md"
+authors = ["Dr. Maxim Orlovsky <orlovsky@ubideco.org>"]
+homepage = "https://github.com/UBIDECO/ascii-armor"
+repository = "https://github.com/UBIDECO/ascii-armor"
+rust-version = "1.66.0"
+edition = "2021"
+license = "Apache-2.0"
+
+[dependencies]
+base85 = "2.0.0"
+sha2 = "0.10.7"
