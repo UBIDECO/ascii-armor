@@ -19,6 +19,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#[cfg(not(any(feature = "base64", feature = "base85")))]
+compile_error!("either base64 or base85 feature must be specified");
+
+#[cfg(all(feature = "base64", feature = "base85"))]
+compile_error!("either base64 or base85 feature must be specified");
+
 #[macro_use]
 extern crate amplify;
 
@@ -57,7 +63,13 @@ impl<'a, A: AsciiArmor> Display for DisplayAsciiArmored<'a, A> {
         }
         writeln!(f)?;
 
+        #[cfg(feature = "base85")]
         let data = base85::encode(&data);
+        #[cfg(feature = "base64")]
+        let data = {
+            use base64::Engine;
+            base64::prelude::BASE64_STANDARD.encode(&data)
+        };
         let mut data = data.as_str();
         while data.len() >= 64 {
             let (line, rest) = data.split_at(64);
@@ -105,9 +117,11 @@ pub enum ArmorParseError {
     /// bindle encoding.
     WrongStructure,
 
-    /// bindle data has invalid Base85 encoding (ASCII armoring).
-    #[from(base85::Error)]
+    /// ASCII armor data has invalid Base85 encoding.
     Base85,
+
+    /// ASCII armor data has invalid Base64 encoding.
+    Base64,
 
     /// header providing id for the armored data must not contain additional
     /// parameters.
@@ -199,7 +213,13 @@ pub trait AsciiArmor: Sized {
             }
         }
         let armor = lines.collect::<String>();
-        let data = base85::decode(&armor).map_err(ArmorParseError::from)?;
+        #[cfg(feature = "base85")]
+        let data = base85::decode(&armor).map_err(|_| ArmorParseError::Base85)?;
+        #[cfg(feature = "base64")]
+        let data = {
+            use base64::Engine;
+            base64::prelude::BASE64_STANDARD.decode(&armor).map_err(|_| ArmorParseError::Base64)?
+        };
         if let Some(checksum) = checksum {
             let checksum = Bytes32::from_str(&checksum)
                 .map_err(|err| ArmorParseError::UnparsableChecksum(err))?;
