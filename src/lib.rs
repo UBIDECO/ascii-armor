@@ -92,7 +92,7 @@ impl<'a, A: AsciiArmor> Display for DisplayAsciiArmored<'a, A> {
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct ArmorHeader {
     pub title: String,
-    pub value: String,
+    pub values: Vec<String>,
     pub params: Vec<(String, String)>,
 }
 
@@ -100,7 +100,14 @@ impl ArmorHeader {
     pub fn new(title: &'static str, value: String) -> Self {
         ArmorHeader {
             title: title.to_owned(),
-            value,
+            values: vec![value],
+            params: none!(),
+        }
+    }
+    pub fn with(title: &'static str, values: impl IntoIterator<Item = String>) -> Self {
+        ArmorHeader {
+            title: title.to_owned(),
+            values: values.into_iter().collect(),
             params: none!(),
         }
     }
@@ -108,7 +115,15 @@ impl ArmorHeader {
 
 impl Display for ArmorHeader {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}: {}", self.title, self.value)?;
+        let pfx = if self.values.len() == 1 { " " } else { "\n\t" };
+        write!(f, "{}:{}", self.title, pfx)?;
+        for (i, val) in self.values.iter().enumerate() {
+            if i > 0 {
+                f.write_str(",\n\t")?;
+            }
+            write!(f, "{}", val)?;
+        }
+
         for (name, val) in &self.params {
             write!(f, ";\n\t{name}={val}")?;
         }
@@ -139,6 +154,9 @@ pub enum ArmorParseError {
     /// parameters.
     NonEmptyChecksumParams,
 
+    /// multiple checksum headers provided.
+    MultipleChecksums,
+
     /// ASCII armor contains unparsable checksum. Details: {0}
     #[from]
     UnparsableChecksum(hex::Error),
@@ -158,7 +176,7 @@ impl FromStr for ArmorHeader {
             s.split_once(':').ok_or_else(|| ArmorParseError::InvalidHeaderFormat(s.to_owned()))?;
         let rest = rest.trim();
         let mut split = rest.split(';');
-        let value =
+        let values =
             split.next().ok_or_else(|| ArmorParseError::InvalidHeaderFormat(s.to_owned()))?.trim();
         let mut params = vec![];
         for param in split {
@@ -167,9 +185,10 @@ impl FromStr for ArmorHeader {
             })?;
             params.push((name.trim().to_owned(), val.trim().to_owned()));
         }
+        let values = values.split(',').map(|val| val.trim().to_owned()).collect();
         Ok(ArmorHeader {
             title: title.to_owned(),
-            value: value.to_owned(),
+            values,
             params,
         })
     }
@@ -204,7 +223,10 @@ pub trait AsciiArmor: Sized {
                 if !header.params.is_empty() {
                     return Err(ArmorParseError::NonEmptyChecksumParams.into());
                 }
-                checksum = Some(header.value);
+                if header.values.is_empty() || header.values.len() > 1 {
+                    return Err(ArmorParseError::MultipleChecksums.into());
+                }
+                checksum = Some(header.values[0].to_owned());
             } else {
                 headers.push(header);
             }
@@ -238,6 +260,9 @@ pub trait AsciiArmor: Sized {
 pub enum StrictArmorError {
     /// ASCII armor misses required Id header.
     MissedId,
+
+    /// multiple Id headers.
+    MultipleIds,
 
     /// Id header of the ASCII armor contains unparsable information. Details: {0}
     #[from]
@@ -300,7 +325,10 @@ where T: StrictArmor
         let id =
             headers.iter().find(|h| h.title == ASCII_ARMOR_ID).ok_or(StrictArmorError::MissedId)?;
         // TODO: Proceed and check id
-        let expected = T::Id::from_str(&id.value).map_err(StrictArmorError::from)?;
+        if id.values.is_empty() || id.values.len() > 1 {
+            return Err(StrictArmorError::MultipleIds.into());
+        }
+        let expected = T::Id::from_str(&id.values[0]).map_err(StrictArmorError::from)?;
         let data = Confined::try_from(data).map_err(StrictArmorError::from)?;
         let mut me =
             Self::from_strict_serialized::<U24MAX>(data).map_err(StrictArmorError::from)?;
