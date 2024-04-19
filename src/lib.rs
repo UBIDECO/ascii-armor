@@ -110,7 +110,7 @@ impl Display for ArmorHeader {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{}: {}", self.title, self.value)?;
         for (name, val) in &self.params {
-            write!(f, ";\n{name}={val}")?;
+            write!(f, ";\n\t{name}={val}")?;
         }
         Ok(())
     }
