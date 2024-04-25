@@ -38,7 +38,7 @@ use amplify::confinement::{self, Confined};
 use amplify::num::u24;
 use amplify::{hex, Bytes32};
 use sha2::{Digest, Sha256};
-#[cfg(feature = "strict_encoding")]
+#[cfg(feature = "strict")]
 use strict_encoding::{StrictDeserialize, StrictSerialize};
 
 pub const ASCII_ARMOR_MAX_LEN: usize = u24::MAX.to_usize();
@@ -255,7 +255,7 @@ pub trait AsciiArmor: Sized {
 }
 
 #[cfg(feature = "strict")]
-#[derive(Clone, Eq, PartialEq, Debug, Display, Error, From)]
+#[derive(Debug, Display, Error, From)]
 #[display(doc_comments)]
 pub enum StrictArmorError {
     /// ASCII armor misses required Id header.
@@ -264,9 +264,10 @@ pub enum StrictArmorError {
     /// multiple Id headers.
     MultipleIds,
 
+    #[cfg(feature = "baid64")]
     /// Id header of the ASCII armor contains unparsable information. Details: {0}
     #[from]
-    InvalidId(baid58::Baid58ParseError),
+    InvalidId(baid64::Baid64ParseError),
 
     /// the actual ASCII armor doesn't match the provided id.
     ///
@@ -290,7 +291,7 @@ pub enum StrictArmorError {
 
 #[cfg(feature = "strict")]
 pub trait StrictArmor: StrictSerialize + StrictDeserialize {
-    type Id: Copy + Eq + Debug + Display + FromStr<Err = baid58::Baid58ParseError>;
+    type Id: Copy + Eq + Debug + Display + FromStr<Err = baid64::Baid64ParseError>;
 
     const PLATE_TITLE: &'static str;
 
