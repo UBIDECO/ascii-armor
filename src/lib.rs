@@ -76,8 +76,8 @@ impl<'a, A: AsciiArmor> Display for DisplayAsciiArmored<'a, A> {
             base64::prelude::BASE64_STANDARD.encode(&data)
         };
         let mut data = data.as_str();
-        while data.len() >= 64 {
-            let (line, rest) = data.split_at(64);
+        while data.len() >= 80 {
+            let (line, rest) = data.split_at(80);
             writeln!(f, "{}", line)?;
             data = rest;
         }
