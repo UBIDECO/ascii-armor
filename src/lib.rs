@@ -43,7 +43,7 @@ use strict_encoding::{StrictDeserialize, StrictSerialize};
 
 pub const ASCII_ARMOR_MAX_LEN: usize = u24::MAX.to_usize();
 pub const ASCII_ARMOR_ID: &'static str = "Id";
-pub const ASCII_ARMOR_CHECKSUM_SHA256: &'static str = "Checksum-SHA256";
+pub const ASCII_ARMOR_CHECKSUM_SHA256: &'static str = "Check-SHA256";
 
 pub struct DisplayAsciiArmored<'a, A: AsciiArmor>(&'a A);
 
@@ -64,7 +64,7 @@ impl<'a, A: AsciiArmor> Display for DisplayAsciiArmored<'a, A> {
             writeln!(f, "{header}")?;
         }
         if let Some(digest) = digest {
-            writeln!(f, "Checksum-SHA256: {digest}")?;
+            writeln!(f, "{ASCII_ARMOR_CHECKSUM_SHA256}: {digest}")?;
         }
         writeln!(f)?;
 
