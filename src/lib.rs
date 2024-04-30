@@ -372,4 +372,19 @@ mod test {
         assert_eq!(data, data2);
         assert_eq!(armor, armor2);
     }
+
+    #[test]
+    fn format() {
+        let noise = Sha256::digest("some test data");
+        let data = noise.as_slice().repeat(100).iter().cloned().collect::<Vec<u8>>();
+        let armored_context = data.to_ascii_armored_string();
+        let mut lines = armored_context.lines();
+        let mut current = lines.next().unwrap_or_default();
+        assert_eq!(current, "-----BEGIN DATA-----");
+        while let Some(line) = lines.next() {
+            assert!(line.len() <= 80, "a line should less than or equal 80 chars");
+            current = line;
+        }
+        assert_eq!(current, "-----END DATA-----");
+    }
 }
