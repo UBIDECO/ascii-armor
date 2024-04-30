@@ -372,4 +372,78 @@ mod test {
         assert_eq!(data, data2);
         assert_eq!(armor, armor2);
     }
+
+    #[test]
+    fn format() {
+        let noise = Sha256::digest("some test data");
+        let data = noise.as_slice().repeat(100).iter().cloned().collect::<Vec<u8>>();
+        let armored_context = data.to_ascii_armored_string();
+        let mut lines = armored_context.lines();
+        let mut current = lines.next().unwrap_or_default();
+        assert_eq!(current, "-----BEGIN DATA-----");
+        while let Some(line) = lines.next() {
+            assert!(line.len() <= 80, "a line should less than or equal 80 chars");
+            current = line;
+        }
+        assert_eq!(current, "-----END DATA-----");
+    }
+
+    #[cfg(feature = "strict")]
+    #[test]
+    fn strict_format() {
+        use strict_encoding::{StrictDecode, StrictEncode, StrictType};
+
+        #[derive(
+            Copy,
+            Clone,
+            Debug,
+            Default,
+            Display,
+            Eq,
+            StrictType,
+            StrictEncode,
+            StrictDecode,
+            PartialEq
+        )]
+        #[strict_type(lib = "ARMORtest")]
+        #[display("SID")]
+        pub struct SID(());
+        impl FromStr for SID {
+            type Err = baid64::Baid64ParseError;
+            fn from_str(_s: &str) -> Result<Self, Self::Err> { Ok(Self::default()) }
+        }
+
+        #[derive(Default, StrictType, StrictEncode, StrictDecode)]
+        #[strict_type(lib = "ARMORtest")]
+        struct S {
+            inner: u8,
+        }
+        impl StrictSerialize for S {}
+        impl StrictDeserialize for S {}
+        impl StrictArmor for S {
+            const PLATE_TITLE: &'static str = "S";
+            type Id = SID;
+            fn armor_id(&self) -> Self::Id { Default::default() }
+        }
+
+        let s = S::default();
+        let display_ascii_armored = s.display_ascii_armored();
+
+        assert_eq!(
+            s.to_ascii_armored_string(),
+            format!(
+                r#"-----BEGIN S-----
+Id: SID
+Check-SHA256: {}
+
+00
+
+-----END S-----
+"#,
+                display_ascii_armored.data_digest().1.unwrap_or_default()
+            )
+        );
+
+        assert_eq!(display_ascii_armored.data_digest().0, vec![0]);
+    }
 }
