@@ -325,7 +325,7 @@ where T: StrictArmor
     fn with_headers_data(headers: Vec<ArmorHeader>, data: Vec<u8>) -> Result<Self, Self::Err> {
         let id =
             headers.iter().find(|h| h.title == ASCII_ARMOR_ID).ok_or(StrictArmorError::MissedId)?;
-        // TODO: Proceed and check id
+        // Proceed and check id
         if id.values.is_empty() || id.values.len() > 1 {
             return Err(StrictArmorError::MultipleIds.into());
         }
@@ -407,13 +407,19 @@ mod test {
         )]
         #[strict_type(lib = "ARMORtest")]
         #[display("SID")]
-        pub struct SID(());
+        pub struct SID {
+            inner: u8,
+        }
         impl FromStr for SID {
             type Err = baid64::Baid64ParseError;
-            fn from_str(_s: &str) -> Result<Self, Self::Err> { Ok(Self::default()) }
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                Ok(Self {
+                    inner: s.len() as u8,
+                })
+            }
         }
 
-        #[derive(Default, StrictType, StrictEncode, StrictDecode)]
+        #[derive(Default, Debug, StrictType, StrictEncode, StrictDecode, PartialEq)]
         #[strict_type(lib = "ARMORtest")]
         struct S {
             inner: u8,
@@ -445,5 +451,32 @@ Check-SHA256: {}
         );
 
         assert_eq!(display_ascii_armored.data_digest().0, vec![0]);
+
+        // check checksum error will raise
+        assert!(S::from_ascii_armored_str(
+            r#"-----BEGIN S-----
+Id: SID
+Check-SHA256: XXXXXXXX
+
+00
+
+-----END S-----
+"#
+        )
+        .is_err());
+
+        // check id error will raise
+        assert!(S::from_ascii_armored_str(&format!(
+            r#"-----BEGIN S-----
+Id: XXXXX
+Check-SHA256: {}
+
+00
+
+-----END S-----
+"#,
+            display_ascii_armored.data_digest().1.unwrap_or_default()
+        ))
+        .is_err());
     }
 }
