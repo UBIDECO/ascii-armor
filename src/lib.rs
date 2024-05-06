@@ -406,7 +406,7 @@ mod test {
             PartialEq
         )]
         #[strict_type(lib = "ARMORtest")]
-        #[display("SID")]
+        #[display("{inner}")]
         pub struct SID {
             inner: u8,
         }
@@ -439,24 +439,23 @@ mod test {
             s.to_ascii_armored_string(),
             format!(
                 r#"-----BEGIN S-----
-Id: SID
-Check-SHA256: {}
+Id: 0
+Check-SHA256: 6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d
 
 00
 
 -----END S-----
-"#,
-                display_ascii_armored.data_digest().1.unwrap_or_default()
-            )
+"#)
         );
 
         assert_eq!(display_ascii_armored.data_digest().0, vec![0]);
 
         // check checksum error will raise
+        // 6e34....a01e is one bit more than 6e34....a01d
         assert!(S::from_ascii_armored_str(
             r#"-----BEGIN S-----
-Id: SID
-Check-SHA256: XXXXXXXX
+Id: 0
+Check-SHA256: 6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01e
 
 00
 
@@ -466,9 +465,10 @@ Check-SHA256: XXXXXXXX
         .is_err());
 
         // check id error will raise
+        // 1 is one bit more than 0
         assert!(S::from_ascii_armored_str(&format!(
             r#"-----BEGIN S-----
-Id: XXXXX
+Id: 1
 Check-SHA256: {}
 
 00
