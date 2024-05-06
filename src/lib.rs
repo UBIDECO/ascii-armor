@@ -20,10 +20,10 @@
 // limitations under the License.
 
 #[cfg(not(any(feature = "base64", feature = "base85")))]
-compile_error!("either base64 or base85 feature must be specified");
+compile_error!("either base64 or base85 feature must be specified, you provide none of them.");
 
 #[cfg(all(feature = "base64", feature = "base85"))]
-compile_error!("either base64 or base85 feature must be specified");
+compile_error!("either base64 or base85 feature must be specified, you provide both of them.");
 
 #[macro_use]
 extern crate amplify;
@@ -434,6 +434,7 @@ mod test {
         let s = S::default();
         let display_ascii_armored = s.display_ascii_armored();
 
+        #[cfg(feature = "base85")]
         assert_eq!(
             s.to_ascii_armored_string(),
             format!(
@@ -447,11 +448,26 @@ Check-SHA256: 6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d
 "#
             )
         );
+        #[cfg(feature = "base64")]
+        assert_eq!(
+            s.to_ascii_armored_string(),
+            format!(
+                r#"-----BEGIN S-----
+Id: 0
+Check-SHA256: 6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d
+
+AA==
+
+-----END S-----
+"#
+            )
+        );
 
         assert_eq!(display_ascii_armored.data_digest().0, vec![0]);
 
         // check checksum error will raise
         // 6e34....a01e is one bit more than 6e34....a01d
+        #[cfg(feature = "base85")]
         assert!(S::from_ascii_armored_str(
             r#"-----BEGIN S-----
 Id: 0
@@ -463,15 +479,41 @@ Check-SHA256: 6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01e
 "#
         )
         .is_err());
+        #[cfg(feature = "base64")]
+        assert!(S::from_ascii_armored_str(
+            r#"-----BEGIN S-----
+Id: 0
+Check-SHA256: 6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01e
+
+AA==
+
+-----END S-----
+"#
+        )
+        .is_err());
 
         // check id error will raise
         // 1 is one bit more than 0
+        #[cfg(feature = "base85")]
         assert!(S::from_ascii_armored_str(&format!(
             r#"-----BEGIN S-----
 Id: 1
 Check-SHA256: {}
 
 00
+
+-----END S-----
+"#,
+            display_ascii_armored.data_digest().1.unwrap_or_default()
+        ))
+        .is_err());
+        #[cfg(feature = "base64")]
+        assert!(S::from_ascii_armored_str(&format!(
+            r#"-----BEGIN S-----
+Id: 1
+Check-SHA256: {}
+
+AA==
 
 -----END S-----
 "#,
