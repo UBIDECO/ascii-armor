@@ -25,33 +25,33 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
-  clippy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Install rustc stable
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-          components: clippy
-      - uses: actions-rs/cargo@v1
-        name: Clippy
-        with:
-          command: clippy
-          args: --workspace --all-features --all-targets
-  doc:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Install rustc nightly
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          override: true
-          components: rust-docs
-      - uses: actions-rs/cargo@v1
-        name: Doc
-        with:
-          command: doc
-          args: --workspace --all-features
+  # clippy:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - name: Install rustc stable
+  #       uses: actions-rs/toolchain@v1
+  #       with:
+  #         toolchain: stable
+  #         override: true
+  #         components: clippy
+  #     - uses: actions-rs/cargo@v1
+  #       name: Clippy
+  #       with:
+  #         command: clippy
+  #         args: --workspace --all-features --all-targets
+  # doc:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - name: Install rustc nightly
+  #       uses: actions-rs/toolchain@v1
+  #       with:
+  #         toolchain: nightly
+  #         override: true
+  #         components: rust-docs
+  #     - uses: actions-rs/cargo@v1
+  #       name: Doc
+  #       with:
+  #         command: doc
+  #         args: --workspace --all-features

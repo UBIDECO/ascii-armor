@@ -9,7 +9,7 @@ fn main() {
     let in_name = args.next_back().expect("use: armor [-r] <INPUT-FILE> <OUTPUT-FILE>");
     let rev = args.next_back();
 
-    let rev = match rev.as_ref().map(|r| r.as_str()) {
+    let rev = match rev.as_deref() {
         Some("-r") | Some("--rev") => true,
         None => false,
         _ if args.count() > 0 => panic!("use: armor [-r] <INPUT-FILE> <OUTPUT-FILE>"),
