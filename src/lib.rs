@@ -42,8 +42,8 @@ use sha2::{Digest, Sha256};
 use strict_encoding::{StrictDeserialize, StrictSerialize};
 
 pub const ASCII_ARMOR_MAX_LEN: usize = u24::MAX.to_usize();
-pub const ASCII_ARMOR_ID: &'static str = "Id";
-pub const ASCII_ARMOR_CHECKSUM_SHA256: &'static str = "Check-SHA256";
+pub const ASCII_ARMOR_ID: &str = "Id";
+pub const ASCII_ARMOR_CHECKSUM_SHA256: &str = "Check-SHA256";
 
 pub struct DisplayAsciiArmored<'a, A: AsciiArmor>(&'a A);
 
@@ -218,7 +218,7 @@ pub trait AsciiArmor: Sized {
             if line.is_empty() {
                 break;
             }
-            let header = ArmorHeader::from_str(&line)?;
+            let header = ArmorHeader::from_str(line)?;
             if header.title == ASCII_ARMOR_CHECKSUM_SHA256 {
                 if !header.params.is_empty() {
                     return Err(ArmorParseError::NonEmptyChecksumParams.into());
@@ -240,8 +240,8 @@ pub trait AsciiArmor: Sized {
             base64::prelude::BASE64_STANDARD.decode(&armor).map_err(|_| ArmorParseError::Base64)?
         };
         if let Some(checksum) = checksum {
-            let checksum = Bytes32::from_str(&checksum)
-                .map_err(|err| ArmorParseError::UnparsableChecksum(err))?;
+            let checksum =
+                Bytes32::from_str(&checksum).map_err(ArmorParseError::UnparsableChecksum)?;
             let expected = Bytes32::from_byte_array(Sha256::digest(&data));
             if checksum != expected {
                 return Err(ArmorParseError::MismatchedChecksum.into());
@@ -325,9 +325,9 @@ where T: StrictArmor
     fn with_headers_data(headers: Vec<ArmorHeader>, data: Vec<u8>) -> Result<Self, Self::Err> {
         let id =
             headers.iter().find(|h| h.title == ASCII_ARMOR_ID).ok_or(StrictArmorError::MissedId)?;
-        // TODO: Proceed and check id
+        // Proceed and check id
         if id.values.is_empty() || id.values.len() > 1 {
-            return Err(StrictArmorError::MultipleIds.into());
+            return Err(StrictArmorError::MultipleIds);
         }
         let expected = T::Id::from_str(&id.values[0]).map_err(StrictArmorError::from)?;
         let data = Confined::try_from(data).map_err(StrictArmorError::from)?;
@@ -339,8 +339,7 @@ where T: StrictArmor
             return Err(StrictArmorError::MismatchedId {
                 expected: expected.to_string(),
                 actual: actual.to_string(),
-            }
-            .into());
+            });
         }
         Ok(me)
     }
@@ -365,7 +364,7 @@ mod test {
     #[test]
     fn roundtrip() {
         let noise = Sha256::digest("some test data");
-        let data = noise.as_slice().repeat(100).iter().cloned().collect::<Vec<u8>>();
+        let data = noise.as_slice().repeat(100).to_vec();
         let armor = data.to_ascii_armored_string();
         let data2 = Vec::<u8>::from_ascii_armored_str(&armor).unwrap();
         let armor2 = data2.to_ascii_armored_string();
@@ -376,12 +375,12 @@ mod test {
     #[test]
     fn format() {
         let noise = Sha256::digest("some test data");
-        let data = noise.as_slice().repeat(100).iter().cloned().collect::<Vec<u8>>();
+        let data = noise.as_slice().repeat(100).to_vec();
         let armored_context = data.to_ascii_armored_string();
         let mut lines = armored_context.lines();
         let mut current = lines.next().unwrap_or_default();
         assert_eq!(current, "-----BEGIN DATA-----");
-        while let Some(line) = lines.next() {
+        for line in lines {
             assert!(line.len() <= 80, "a line should less than or equal 80 chars");
             current = line;
         }
@@ -406,14 +405,20 @@ mod test {
             PartialEq
         )]
         #[strict_type(lib = "ARMORtest")]
-        #[display("SID")]
-        pub struct SID(());
-        impl FromStr for SID {
+        #[display("{inner}")]
+        pub struct Sid {
+            inner: u8,
+        }
+        impl FromStr for Sid {
             type Err = baid64::Baid64ParseError;
-            fn from_str(_s: &str) -> Result<Self, Self::Err> { Ok(Self::default()) }
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                Ok(Self {
+                    inner: s.len() as u8,
+                })
+            }
         }
 
-        #[derive(Default, StrictType, StrictEncode, StrictDecode)]
+        #[derive(Default, Debug, StrictType, StrictEncode, StrictDecode, PartialEq)]
         #[strict_type(lib = "ARMORtest")]
         struct S {
             inner: u8,
@@ -422,7 +427,7 @@ mod test {
         impl StrictDeserialize for S {}
         impl StrictArmor for S {
             const PLATE_TITLE: &'static str = "S";
-            type Id = SID;
+            type Id = Sid;
             fn armor_id(&self) -> Self::Id { Default::default() }
         }
 
@@ -433,17 +438,45 @@ mod test {
             s.to_ascii_armored_string(),
             format!(
                 r#"-----BEGIN S-----
-Id: SID
+Id: 0
+Check-SHA256: 6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d
+
+00
+
+-----END S-----
+"#
+            )
+        );
+
+        assert_eq!(display_ascii_armored.data_digest().0, vec![0]);
+
+        // check checksum error will raise
+        // 6e34....a01e is one bit more than 6e34....a01d
+        assert!(S::from_ascii_armored_str(
+            r#"-----BEGIN S-----
+Id: 0
+Check-SHA256: 6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01e
+
+00
+
+-----END S-----
+"#
+        )
+        .is_err());
+
+        // check id error will raise
+        // 1 is one bit more than 0
+        assert!(S::from_ascii_armored_str(&format!(
+            r#"-----BEGIN S-----
+Id: 1
 Check-SHA256: {}
 
 00
 
 -----END S-----
 "#,
-                display_ascii_armored.data_digest().1.unwrap_or_default()
-            )
-        );
-
-        assert_eq!(display_ascii_armored.data_digest().0, vec![0]);
+            display_ascii_armored.data_digest().1.unwrap_or_default()
+        ))
+        .is_err());
     }
 }
