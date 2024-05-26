@@ -140,8 +140,7 @@ pub enum ArmorParseError {
     /// armored header '{0}' has invalid parameter '{1}'.
     InvalidHeaderParam(String, String),
 
-    /// the provided text doesn't represent a recognizable ASCII-armored RGB
-    /// bindle encoding.
+    /// the provided text doesn't contain recognizable ASCII-armored encoding.
     WrongStructure,
 
     /// ASCII armor data has invalid Base85 encoding.
@@ -206,12 +205,11 @@ pub trait AsciiArmor: Sized {
     fn to_ascii_armored_data(&self) -> Vec<u8>;
 
     fn from_ascii_armored_str(s: &str) -> Result<Self, Self::Err> {
-        let mut lines = s.lines();
         let first = format!("-----BEGIN {}-----", Self::PLATE_TITLE);
         let last = format!("-----END {}-----", Self::PLATE_TITLE);
-        if (lines.next(), lines.next_back()) != (Some(&first), Some(&last)) {
-            return Err(ArmorParseError::WrongStructure.into());
-        }
+
+        let mut lines = s.lines().skip_while(|line| line != &first);
+        lines.next();
         let mut checksum = None;
         let mut headers = vec![];
         for line in lines.by_ref() {
@@ -231,7 +229,10 @@ pub trait AsciiArmor: Sized {
                 headers.push(header);
             }
         }
-        let armor = lines.collect::<String>();
+        let armor = lines.take_while(|line| line != &last).collect::<String>();
+        if armor.trim().is_empty() {
+            return Err(ArmorParseError::WrongStructure.into());
+        }
         #[cfg(feature = "base85")]
         let data = base85::decode(&armor).map_err(|_| ArmorParseError::Base85)?;
         #[cfg(feature = "base64")]
