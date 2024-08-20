@@ -467,8 +467,9 @@ AA==
         // check checksum error will raise
         // 6e34....a01e is one bit more than 6e34....a01d
         #[cfg(feature = "base85")]
-        assert!(S::from_ascii_armored_str(
-            r#"-----BEGIN S-----
+        assert!(
+            S::from_ascii_armored_str(
+                r#"-----BEGIN S-----
 Id: 0
 Check-SHA256: 6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01e
 
@@ -476,11 +477,13 @@ Check-SHA256: 6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01e
 
 -----END S-----
 "#
-        )
-        .is_err());
+            )
+            .is_err()
+        );
         #[cfg(feature = "base64")]
-        assert!(S::from_ascii_armored_str(
-            r#"-----BEGIN S-----
+        assert!(
+            S::from_ascii_armored_str(
+                r#"-----BEGIN S-----
 Id: 0
 Check-SHA256: 6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01e
 
@@ -488,14 +491,16 @@ AA==
 
 -----END S-----
 "#
-        )
-        .is_err());
+            )
+            .is_err()
+        );
 
         // check id error will raise
         // 1 is one bit more than 0
         #[cfg(feature = "base85")]
-        assert!(S::from_ascii_armored_str(&format!(
-            r#"-----BEGIN S-----
+        assert!(
+            S::from_ascii_armored_str(&format!(
+                r#"-----BEGIN S-----
 Id: 1
 Check-SHA256: {}
 
@@ -503,12 +508,14 @@ Check-SHA256: {}
 
 -----END S-----
 "#,
-            display_ascii_armored.data_digest().1.unwrap_or_default()
-        ))
-        .is_err());
+                display_ascii_armored.data_digest().1.unwrap_or_default()
+            ))
+            .is_err()
+        );
         #[cfg(feature = "base64")]
-        assert!(S::from_ascii_armored_str(&format!(
-            r#"-----BEGIN S-----
+        assert!(
+            S::from_ascii_armored_str(&format!(
+                r#"-----BEGIN S-----
 Id: 1
 Check-SHA256: {}
 
@@ -516,8 +523,9 @@ AA==
 
 -----END S-----
 "#,
-            display_ascii_armored.data_digest().1.unwrap_or_default()
-        ))
-        .is_err());
+                display_ascii_armored.data_digest().1.unwrap_or_default()
+            ))
+            .is_err()
+        );
     }
 }
