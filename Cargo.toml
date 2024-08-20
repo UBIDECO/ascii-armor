@@ -1,6 +1,6 @@
 [package]
 name = "ascii-armor"
-version = "0.8.0"
+version = "0.7.2"
 description = "ASCII Armor: binary to text encoding library and command-line utility"
 keywords = ["ascii", "encoding"]
 categories = ["encoding", "value-formatting", "command-line-utilities"]
