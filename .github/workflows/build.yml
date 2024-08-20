@@ -22,25 +22,21 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo check --workspace
-  no-default:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo check --workspace --no-default-features
   features:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        feature: [ base64, base85, strict ]
+        feature:
+          - base64
+          - base85
+          - strict,base64
+          - strict,base85
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - name: Feature ${{matrix.feature}}
         run: cargo check --workspace --no-default-features --features=${{matrix.feature}}
-      - name: Feature ${{matrix.feature}}
-        run: cargo check --workspace --features=${{matrix.feature}}
   platforms:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -57,7 +53,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        toolchain: [ nightly, beta, stable, 1.75.0 ]
+        toolchain: [ nightly, beta, stable, 1.76.0 ]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
