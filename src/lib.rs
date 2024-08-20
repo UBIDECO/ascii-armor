@@ -318,9 +318,7 @@ where T: StrictArmor
     }
 
     fn to_ascii_armored_data(&self) -> Vec<u8> {
-        self.to_strict_serialized::<U24MAX>()
-            .expect("data too large for ASCII armoring")
-            .into_inner()
+        self.to_strict_serialized::<U24MAX>().expect("data too large for ASCII armoring").release()
     }
 
     fn with_headers_data(headers: Vec<ArmorHeader>, data: Vec<u8>) -> Result<Self, Self::Err> {
