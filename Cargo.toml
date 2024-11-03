@@ -1,6 +1,6 @@
 [package]
 name = "ascii-armor"
-version = "0.7.3"
+version = "0.8.0"
 description = "ASCII Armor: binary to text encoding library and command-line utility"
 keywords = ["ascii", "encoding"]
 categories = ["encoding", "value-formatting", "command-line-utilities"]
@@ -22,7 +22,7 @@ name = "armor"
 [dependencies]
 amplify = "4.8.0"
 strict_encoding = { version = "2.7.1", optional = true }
-baid64 = { version = "0.2.2", optional = true }
+baid64 = { version = "0.3.0", optional = true }
 base64 = { version = "0.22.1", optional = true }
 base85 = { version = "2.0.0", optional = true }
 sha2 = "0.10.8"
