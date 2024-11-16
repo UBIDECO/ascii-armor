@@ -55,11 +55,10 @@ checksum = "d92bec98840b8f03a5ff5413de5293bfcd8bf96467cf5452609f939ec6f5de16"
 
 [[package]]
 name = "ascii-armor"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "amplify",
  "baid64",
- "base64",
  "base85",
  "sha2",
  "strict_encoding",
@@ -67,9 +66,9 @@ dependencies = [
 
 [[package]]
 name = "baid64"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30acc16368c00c4d3ce4526d0c1528e22d75814534b3dba97e871aa5f8395697"
+checksum = "4fbb63215df31f5d0c0db9f820bd298b2480a1e6f466b75af20a8c634e10d8e2"
 dependencies = [
  "amplify",
  "base64",
@@ -213,9 +212,9 @@ dependencies = [
 
 [[package]]
 name = "strict_encoding"
-version = "2.7.1"
+version = "2.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f84deeb6b9e839d4e4f67040aca49c13d0191e57f5383dc73c2626bca248d96"
+checksum = "8fd36b71bb44ca146be0b2185ed6c6deb3684cc0d5c3a94284e97fe7fa6a642f"
 dependencies = [
  "amplify",
  "strict_encoding_derive",
@@ -224,9 +223,9 @@ dependencies = [
 
 [[package]]
 name = "strict_encoding_derive"
-version = "2.7.1"
+version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "119f2044ee7438c2f25330cafd684be868de4f51621483de8ad8c442dc80bdb0"
+checksum = "34e3bc6e4a2450420b4dbfb6929d9ce005e8c36cf73bf215db99f0d09c9fa79f"
 dependencies = [
  "amplify_syn",
  "heck",

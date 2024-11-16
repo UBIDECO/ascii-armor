@@ -28,15 +28,14 @@ compile_error!("either base64 or base85 feature must be specified, you provide b
 #[macro_use]
 extern crate amplify;
 
-use core::fmt::{self, Display, Formatter};
+use core::fmt::{self, Debug, Display, Formatter};
 use core::str::FromStr;
-use std::fmt::Debug;
 
 #[cfg(feature = "strict")]
 use amplify::confinement::U24 as U24MAX;
 use amplify::confinement::{self, Confined};
 use amplify::num::u24;
-use amplify::{hex, Bytes32};
+use amplify::{Bytes32, hex};
 use sha2::{Digest, Sha256};
 #[cfg(feature = "strict")]
 use strict_encoding::{StrictDeserialize, StrictSerialize};
@@ -237,8 +236,10 @@ pub trait AsciiArmor: Sized {
         let data = base85::decode(&armor).map_err(|_| ArmorParseError::Base85)?;
         #[cfg(feature = "base64")]
         let data = {
-            use base64::Engine;
-            base64::prelude::BASE64_STANDARD.decode(&armor).map_err(|_| ArmorParseError::Base64)?
+            use baid64::base64::Engine;
+            baid64::base64::prelude::BASE64_STANDARD
+                .decode(&armor)
+                .map_err(|_| ArmorParseError::Base64)?
         };
         if let Some(checksum) = checksum {
             let checksum =
